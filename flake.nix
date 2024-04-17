@@ -1,5 +1,5 @@
 {
-  description = "demo-iced";
+  description = "lwpd";
 
   nixConfig = {
     extra-substituters = [
@@ -26,6 +26,7 @@
         };
         rust-tools = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-src" ];
+          targets = [ "wasm32-unknown-unknown" ];
         };
       in
       {
@@ -38,11 +39,9 @@
           # '';
 
           buildInputs = with pkgs; [
-            clang
-            llvmPackages_17.bintools
-            libusb1
-            openssl
-            pkg-config
+            wasm-pack
+            cargo-generate
+            nodejs_21
           ] ++ [
             rust-tools
           ] ++ (with pkgs.darwin.apple_sdk.frameworks; pkgs.lib.optionals pkgs.stdenv.isDarwin [
