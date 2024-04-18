@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project2</title>
+</head>
+<body>
+    
+    <script type="module">
+        import init, { greet } from "../core/pkg/core.js";
+
+        async function run() {
+          await init();
+
+          greet("wasm")
+        }
+        run()
+    </script>
+</body>
+</html>
