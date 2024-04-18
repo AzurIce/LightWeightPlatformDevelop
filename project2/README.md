@@ -15,7 +15,7 @@
 - 如果你有 cargo：
     ```
     cargo install miniserve
-    miniserve . --index "index.html" - 8080
+    miniserve . --index "index.html" -p 8080
     ```
 - 或者，直接使用这个 VSCode 插件：
     https://github.com/ritwickdey/vscode-live-server

@@ -1,21 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project2</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project2</title>
+  <style>
+    html,
+    body {
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #app {
+      width: 480px;
+      height: 700px;
+      flex: 480px 0 0;
+      box-sizing: border-box;
+      background-color: #ccc;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+
+      transform: scale(1);
+    }
+
+    #stats {
+      position: absolute;
+      top: 10px;
+      z-index: 10;
+    }
+  </style>
 </head>
+
 <body>
-    
-    <script type="module">
-        import init, { greet } from "../core/pkg/core.js";
+  <div id="stats"></div>
+  <div id="app">
+    <canvas id="canvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
+  </div>
 
-        async function run() {
-          await init();
+  <script type="module">
+    import init, { Game, GameSettings, UserInputEvent } from "../core/pkg/core.js";
 
-          greet("wasm")
+    async function load_image_bitmap(name) {
+      const image_response = await fetch(`./images/${name}`);
+      const image_blob = await image_response.blob();
+      return await createImageBitmap(image_blob);
+    }
+
+    const me2 = await load_image_bitmap("me2.png")
+
+    const fps_limit = 60;
+    const render_tick_ms = 1000 / fps_limit; // 16.66667ms
+    async function run() {
+      await init();
+
+      // Init
+      const SETTINGS = new GameSettings(480, 700);
+
+      const canvas = document.getElementById("canvas");
+      canvas.width = SETTINGS.width;
+      canvas.height = SETTINGS.height;
+      const ctx = canvas.getContext("2d");
+
+      const stats = document.getElementById("stats");
+
+      var app = document.getElementById("app");
+      function setSize() {
+        console.log("window.innerWidth", window.innerWidth, "window.innerHeight", window.innerHeight)
+        const widthRatio = window.innerWidth / SETTINGS.width;
+        const heightRatio = window.innerHeight / SETTINGS.height;
+        app.style.transform = `scale(${widthRatio < heightRatio ? widthRatio : heightRatio})`;
+      }
+      setSize();
+      window.onresize = setSize;
+
+      // Create Game
+      let game = new Game(SETTINGS);
+
+      function keydown_handler(event) {
+        console.log(event);
+        game.update(new UserInputEvent(event.key, 1))
+      }
+      function keyup_handler(event) {
+        console.log(event);
+        game.update(new UserInputEvent(event.key, 0))
+      }
+
+      console.log("adding event listeners...")
+      document.addEventListener('keydown', keydown_handler);
+      document.addEventListener('keyup', keyup_handler);
+
+      console.log("enter render loop...")
+      let last_tick = Date.now();
+      while (true) {
+        stats.innerHTML = `position: (${game.hero.motion_state.x.toFixed(2)}, ${game.hero.motion_state.y.toFixed(2)}), speed: (${game.hero.motion_state.speed_x.toFixed(2)}, ${game.hero.motion_state.speed_y.toFixed(2)})`;
+        // console.time("RenderTick")
+        const render_tick_start = Date.now();
+
+        if (render_tick_start - last_tick > 50) {
+          game.tick();
+          last_tick = render_tick_start;
         }
-        run()
-    </script>
+
+        const hero_x = game.hero.motion_state.x;
+        const hero_y = canvas.height - game.hero.motion_state.y;
+        const hero_w = 100;
+        const hero_h = 100;
+        // TODO: Render logic
+        // ctx.fillRect(0, 0, 100, 100);
+
+        ctx.fillStyle = "#eeeeee";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(me2, hero_x - hero_w / 2, hero_y - hero_h / 2, hero_w, hero_h);
+
+        ctx.beginPath();
+        ctx.arc(hero_x, hero_y, 10, 0, 2 * Math.PI, false);
+        ctx.fillStyle = 'red'; // 设置实心圆的颜色
+        ctx.fill();
+
+        const render_tick_end = Date.now();
+        const render_tick_cost_ms = render_tick_end - render_tick_start;
+        await new Promise(r => setTimeout(r, Math.max(render_tick_ms - render_tick_cost_ms)));
+        // console.timeEnd("RenderTick")
+      }
+
+      console.log("exit render loop...")
+
+      console.log("removing event listeners...")
+      document.removeEventListener('keydown', keydown_handler);
+      document.removeEventListener('keyup', keyup_handler);
+    }
+    run()
+  </script>
 </body>
+
 </html>
