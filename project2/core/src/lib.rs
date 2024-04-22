@@ -1,4 +1,10 @@
-use std::rc::Rc;
+pub mod hero;
+pub mod input;
+
+use hero::Hero;
+use input::{UserInput, UserInputEvent, UserInputEventReciever};
+
+use std::{borrow::Borrow, cell::RefCell, rc::Rc};
 
 use wasm_bindgen::prelude::*;
 
@@ -16,36 +22,9 @@ pub struct MotionState {
     pub friction: f32,
 }
 
-#[wasm_bindgen]
-pub struct UserInput {
-    pub w: bool,
-    pub a: bool,
-    pub s: bool,
-    pub d: bool,
-    pub space: bool,
-}
-
-#[wasm_bindgen]
-pub struct UserInputEvent {
-    key: String,
-    pressed: bool,
-}
-
-#[wasm_bindgen]
-impl UserInputEvent {
-    #[wasm_bindgen(constructor)]
-    pub fn new(key: String, pressed: bool) -> Self {
-        Self { key, pressed }
-    }
-}
-
-pub trait UserInputEventReciever {
-    fn update(&mut self, user_input_event: &UserInputEvent);
-}
-
 impl UserInputEventReciever for MotionState {
     fn update(&mut self, user_input_event: &UserInputEvent) {
-        match user_input_event.key.as_str() {
+        match user_input_event.key().as_str() {
             "w" => {
                 if user_input_event.pressed {
                     self.acc_y = self.acc;
@@ -80,7 +59,7 @@ impl UserInputEventReciever for MotionState {
 }
 
 impl MotionState {
-    fn tick(&mut self, game_setting: Rc<GameSettings>) {
+    fn tick(&mut self, game_setting: &GameSettings) {
         if self.speed_x.abs() > 0.0 {
             self.speed_x = self.speed_x.signum() * (self.speed_x.abs() - self.friction).max(0.0);
         }
@@ -90,7 +69,6 @@ impl MotionState {
             self.x = self.x.clamp(0.0, game_setting.width as f32);
             self.speed_x = 0.0;
         }
-        // }
 
         // TODO: better border handling
 
@@ -108,39 +86,25 @@ impl MotionState {
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
-pub struct Hero {
-    pub health: u16,
-    pub shooting: bool,
+pub struct Bullet {
     pub motion_state: MotionState,
 }
 
-impl UserInputEventReciever for Hero {
-    fn update(&mut self, user_input_event: &UserInputEvent) {
-        self.motion_state.update(user_input_event);
-        if user_input_event.key.as_str() == " " {
-            if user_input_event.pressed {
-                self.shooting = true;
-            } else {
-                self.shooting = false;
-            }
+impl Bullet {
+    fn new(x: f32, y: f32, speed_x: f32, speed_y: f32) -> Self {
+        Self {
+            motion_state: MotionState {
+                x,
+                y,
+                speed_x,
+                speed_y,
+                ..Default::default()
+            },
         }
     }
 }
 
-impl Hero {
-    pub fn tick(&mut self, game_setting: Rc<GameSettings>) {
-        self.motion_state.tick(game_setting);
-    }
-}
-
-pub trait Entity {}
-
-#[wasm_bindgen]
-pub struct Game {
-    setting: Rc<GameSettings>,
-    pub hero: Hero,
-    // enemies: Box<dyn Entity>
-}
+// settings states and game
 
 #[wasm_bindgen]
 pub struct GameSettings {
@@ -157,11 +121,14 @@ impl GameSettings {
 }
 
 #[wasm_bindgen]
-impl Game {
-    #[wasm_bindgen(constructor)]
-    pub fn new(setting: GameSettings) -> Self {
+pub struct GameStates {
+    pub hero: Hero,
+    hero_bullets: Vec<Bullet>,
+}
+
+impl GameStates {
+    pub fn new() -> Self {
         Self {
-            setting: Rc::new(setting),
             hero: Hero {
                 health: 100,
                 motion_state: MotionState {
@@ -170,7 +137,9 @@ impl Game {
                     ..Default::default()
                 },
                 shooting: false,
+                shooting_cooldown: 10,
             },
+            hero_bullets: vec![],
         }
     }
 
@@ -178,7 +147,64 @@ impl Game {
         self.hero.update(user_input_event);
     }
 
+    pub fn tick(&mut self, settings: &GameSettings) {
+        self.hero.motion_state.tick(settings);
+        if self.hero.shooting {
+            if self.hero.shooting_cooldown <= 0 {
+                self.hero_bullets.push(Bullet {
+                    motion_state: MotionState {
+                        x: self.hero.motion_state.x,
+                        y: self.hero.motion_state.y,
+                        speed_x: self.hero.motion_state.speed_x,
+                        speed_y: self.hero.motion_state.speed_y + 5.0,
+                        acc: 0.0,
+                        friction: 0.0,
+                        ..Default::default()
+                    },
+                });
+                self.hero.shooting_cooldown = 10;
+            } else {
+                self.hero.shooting_cooldown -= 1;
+            }
+        }
+        for bullet in self.hero_bullets.iter_mut() {
+            bullet.motion_state.tick(settings);
+            // TODO: collision detection
+        }
+        self.hero_bullets.retain(|bullet| {
+            bullet.motion_state.y > 0.0 && bullet.motion_state.y < settings.height as f32
+        });
+    }
+}
+
+#[wasm_bindgen]
+pub struct Game {
+    settings: Rc<GameSettings>,
+    states: GameStates,
+}
+
+#[wasm_bindgen]
+impl Game {
+    #[wasm_bindgen(constructor)]
+    pub fn new(setting: GameSettings) -> Self {
+        Self {
+            settings: Rc::new(setting),
+            states: GameStates::new(),
+        }
+    }
+
+    pub fn update(&mut self, user_input_event: &UserInputEvent) {
+        self.states.update(user_input_event);
+    }
+
     pub fn tick(&mut self) {
-        self.hero.tick(self.setting.clone());
+        self.states.tick(&self.settings);
+    }
+
+    pub fn hero(&self) -> Hero {
+        self.states.hero.clone()
+    }
+    pub fn bullets(&self) -> Box<[Bullet]> {
+        self.states.hero_bullets.clone().into_boxed_slice()
     }
 }

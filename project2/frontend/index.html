@@ -58,6 +58,7 @@
     }
 
     const me2 = await load_image_bitmap("me2.png")
+    const hero_bullet = await load_image_bitmap("bullet1.png")
 
     const fps_limit = 60;
     const render_tick_ms = 1000 / fps_limit; // 16.66667ms
@@ -84,15 +85,22 @@
       setSize();
       window.onresize = setSize;
 
+      function drawImage(ctx, img, x, _y) {
+          const y = canvas.height - _y;
+          const w = img.width;
+          const h = img.height;
+          ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+      }
+
       // Create Game
       let game = new Game(SETTINGS);
 
       function keydown_handler(event) {
-        console.log(event);
+        // console.log(event);
         game.update(new UserInputEvent(event.key, 1))
       }
       function keyup_handler(event) {
-        console.log(event);
+        // console.log(event);
         game.update(new UserInputEvent(event.key, 0))
       }
 
@@ -103,7 +111,13 @@
       console.log("enter render loop...")
       let last_tick = Date.now();
       while (true) {
-        stats.innerHTML = `position: (${game.hero.motion_state.x.toFixed(2)}, ${game.hero.motion_state.y.toFixed(2)}), speed: (${game.hero.motion_state.speed_x.toFixed(2)}, ${game.hero.motion_state.speed_y.toFixed(2)})`;
+        let hero = game.hero();
+
+        stats.innerHTML = `
+        position: (${hero.motion_state.x.toFixed(2)}, ${hero.motion_state.y.toFixed(2)}),<br/>
+        speed: (${hero.motion_state.speed_x.toFixed(2)}, ${hero.motion_state.speed_y.toFixed(2)})<br/>
+        shooting: (${hero.shooting}, ${hero.shooting_cooldown}),
+        `;
         // console.time("RenderTick")
         const render_tick_start = Date.now();
 
@@ -112,21 +126,28 @@
           last_tick = render_tick_start;
         }
 
-        const hero_x = game.hero.motion_state.x;
-        const hero_y = canvas.height - game.hero.motion_state.y;
-        const hero_w = 100;
-        const hero_h = 100;
+        const hero_x = hero.motion_state.x;
+        const hero_y = hero.motion_state.y;
         // TODO: Render logic
         // ctx.fillRect(0, 0, 100, 100);
 
+        // bg
         ctx.fillStyle = "#eeeeee";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(me2, hero_x - hero_w / 2, hero_y - hero_h / 2, hero_w, hero_h);
+        // hero
+        drawImage(ctx, me2, hero.motion_state.x, hero.motion_state.y);
 
         ctx.beginPath();
-        ctx.arc(hero_x, hero_y, 10, 0, 2 * Math.PI, false);
+        ctx.arc(hero_x, canvas.height - hero_y, 10, 0, 2 * Math.PI, false);
         ctx.fillStyle = 'red'; // 设置实心圆的颜色
         ctx.fill();
+
+        // bullet
+        for (let bullet of game.bullets()) {
+          const bullet_x = bullet.motion_state.x;
+          const bullet_y = bullet.motion_state.y;
+          drawImage(ctx, hero_bullet, bullet_x, bullet_y);
+        }
 
         const render_tick_end = Date.now();
         const render_tick_cost_ms = render_tick_end - render_tick_start;
