@@ -49,7 +49,18 @@
   </div>
 
   <script type="module">
-    import init, { Game, GameSettings, UserInputEvent } from "../core/pkg/core.js";
+    import init, { Game, GameSettings, UserInputEvent, BitmapAsset, bitmap_filename, memory } from "../core/pkg/core.js";
+
+    // import { memory } from "../core/pkg/core_bg.wasm";
+
+    var image_bitmaps = {};
+    async function init_image_bitmaps() {
+      for (let i = 0; i < Object.keys(BitmapAsset).length / 2; i++) {
+        image_bitmaps[i] = await createImageBitmap(
+          await load_image_bitmap(bitmap_filename(i))
+        );
+      }
+    }
 
     async function load_image_bitmap(name) {
       const image_response = await fetch(`./images/${name}`);
@@ -57,13 +68,16 @@
       return await createImageBitmap(image_blob);
     }
 
-    const me2 = await load_image_bitmap("me2.png")
-    const hero_bullet = await load_image_bitmap("bullet1.png")
+    // const me2 = await load_image_bitmap("me2.png")
+    // const hero_bullet = await load_image_bitmap("bullet1.png")
 
     const fps_limit = 60;
     const render_tick_ms = 1000 / fps_limit; // 16.66667ms
     async function run() {
       await init();
+
+      // console.log(image_bitmaps)
+      await init_image_bitmaps();
 
       // Init
       const SETTINGS = new GameSettings(480, 700);
@@ -86,10 +100,11 @@
       window.onresize = setSize;
 
       function drawImage(ctx, img, x, _y) {
-          const y = canvas.height - _y;
-          const w = img.width;
-          const h = img.height;
-          ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+        // console.log(img)
+        const y = canvas.height - _y;
+        const w = img.width;
+        const h = img.height;
+        ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
       }
 
       // Create Game
@@ -118,36 +133,63 @@
         speed: (${hero.motion_state.speed_x.toFixed(2)}, ${hero.motion_state.speed_y.toFixed(2)})<br/>
         shooting: (${hero.shooting}, ${hero.shooting_cooldown}),
         `;
-        // console.time("RenderTick")
-        const render_tick_start = Date.now();
 
-        if (render_tick_start - last_tick > 50) {
+        // console.time("RenderTick")
+        let now = Date.now();
+        if (now - last_tick > 50) {
           game.tick();
-          last_tick = render_tick_start;
+          last_tick = now;
         }
 
-        const hero_x = hero.motion_state.x;
-        const hero_y = hero.motion_state.y;
+        const render_tick_start = Date.now();
+        game.prepare_primitives();
+
+        const draw_primitives = async () => {
+          const primitives_ptr = game.primitives();
+          const len = game.primitives_len();
+          // const step = game.primitive_size();
+          const step = 3;
+          const primitives_u8 = new Uint32Array(memory().buffer, primitives_ptr, len * step);
+          const primitives_f32 = new Float32Array(memory().buffer, primitives_ptr, len * step);
+
+
+          // console.log(len)
+          // console.log(image_bitmaps)
+          for (let i = 0; i < len * step; i += step) {
+            const x = primitives_f32[i];
+            const y = primitives_f32[i + 1];
+            const bitmap = primitives_u8[i + 2];
+            // console.log(primitives_f32[i], primitives_f32[i + 1], primitives_u8[i + 2])
+            drawImage(ctx, image_bitmaps[bitmap], x, y)
+          }
+          await new Promise(r => setTimeout(r, 1));
+        }
+
+
+
+        // const hero_x = hero.motion_state.x;
+        // const hero_y = hero.motion_state.y;
         // TODO: Render logic
         // ctx.fillRect(0, 0, 100, 100);
 
-        // bg
+        // // bg
         ctx.fillStyle = "#eeeeee";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // hero
-        drawImage(ctx, me2, hero.motion_state.x, hero.motion_state.y);
+        await draw_primitives()
+        // // hero
+        // drawImage(ctx, me2, hero.motion_state.x, hero.motion_state.y);
 
-        ctx.beginPath();
-        ctx.arc(hero_x, canvas.height - hero_y, 10, 0, 2 * Math.PI, false);
-        ctx.fillStyle = 'red'; // 设置实心圆的颜色
-        ctx.fill();
+        // ctx.beginPath();
+        // ctx.arc(hero_x, canvas.height - hero_y, 5, 0, 2 * Math.PI, false);
+        // ctx.fillStyle = 'red'; // 设置实心圆的颜色
+        // ctx.fill();
 
-        // bullet
-        for (let bullet of game.bullets()) {
-          const bullet_x = bullet.motion_state.x;
-          const bullet_y = bullet.motion_state.y;
-          drawImage(ctx, hero_bullet, bullet_x, bullet_y);
-        }
+        // // bullet
+        // for (let bullet of game.bullets()) {
+        //   const bullet_x = bullet.motion_state.x;
+        //   const bullet_y = bullet.motion_state.y;
+        //   drawImage(ctx, hero_bullet, bullet_x, bullet_y);
+        // }
 
         const render_tick_end = Date.now();
         const render_tick_cost_ms = render_tick_end - render_tick_start;

@@ -27,8 +27,48 @@
 既然是「游戏」，那么就按照经典的 渲染 + 逻辑 拆分的模式来做。
 <s>既然是我写，那肯定要用点 Rust</s>
 
-- `core`：游戏逻辑引擎本体，Rust 编写
+- `core`：游戏引擎本体，Rust 编写
     负责整个游戏的逻辑数据计算，通过编译为 wasm 在前端中使用
 - `frontend`：前端目录
 
-游戏核心按照固定的 tps 运行主循环，前端通过直接访问 wasm 内存获取数据进行渲染。
+
+
+游戏的主循环写在 `js` 中，由于 `js` 是单线程的，所以只能通过“调度”来实现逻辑与渲染刻的步进：
+
+```js
+const mspt = 50
+let lastTick = 0;
+
+// time is the end time of the previous frame's rendering,
+// decimal number, in milliseconds
+function mainloop(time) {
+  if (lastTime == 0) {
+    lastTick = time;
+  } else {
+    if (time - lastTick > mspt) {
+        lastTick = time;
+        tick();
+    }
+  }
+  render(time - lastTick);
+  windows.requestAnimationFrame(mainloop);
+}
+
+windows.requestAnimationFrame(mainloop);
+```
+
+
+
+逻辑线程由 js 调用 `tick` 来更新 `GameState`。
+
+渲染线程获取数据，并根据 `timeDelta` 插值绘制。
+
+
+
+渲染无非就是两个信息：
+
+- 画什么？
+- 在哪画
+
+而对于这个作业来说，图元种类只有一种 —— 图像，而我们的资源并不多，因此直接用一个枚举类型来实现，并提供一个获取 blob 数据的接口。
+

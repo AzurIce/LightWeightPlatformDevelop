@@ -1,2 +1,3 @@
 build:
     wasm-pack build --target web
+    echo "export const memory = () => wasm.memory;" >> pkg/core.js

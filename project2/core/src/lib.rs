@@ -1,12 +1,18 @@
 pub mod hero;
 pub mod input;
+pub mod render;
 
 use hero::Hero;
 use input::{UserInput, UserInputEvent, UserInputEventReciever};
+use render::{BitmapAsset, Primitive};
 
 use std::{borrow::Borrow, cell::RefCell, rc::Rc};
+use instant::Instant;
+// use std::time::Instant;
 
 use wasm_bindgen::prelude::*;
+
+use crate::render::Render;
 
 #[wasm_bindgen]
 #[derive(Default, Clone, Copy)]
@@ -104,6 +110,15 @@ impl Bullet {
     }
 }
 
+impl Render for Bullet {
+    fn render(&self, ms_delta: u128) -> Primitive {
+        Primitive::new(
+            BitmapAsset::BulletPlayer,
+            (self.motion_state.x, self.motion_state.y),
+        )
+    }
+}
+
 // settings states and game
 
 #[wasm_bindgen]
@@ -155,8 +170,10 @@ impl GameStates {
                     motion_state: MotionState {
                         x: self.hero.motion_state.x,
                         y: self.hero.motion_state.y,
-                        speed_x: self.hero.motion_state.speed_x,
-                        speed_y: self.hero.motion_state.speed_y + 5.0,
+                        // speed_x: self.hero.motion_state.speed_x,
+                        // speed_y: self.hero.motion_state.speed_y + 5.0,
+                        speed_x: 0.0,
+                        speed_y: 8.0,
                         acc: 0.0,
                         friction: 0.0,
                         ..Default::default()
@@ -180,7 +197,9 @@ impl GameStates {
 #[wasm_bindgen]
 pub struct Game {
     settings: Rc<GameSettings>,
+    last_tick_time: Instant,
     states: GameStates,
+    render_primitives: Vec<Primitive>,
 }
 
 #[wasm_bindgen]
@@ -189,7 +208,9 @@ impl Game {
     pub fn new(setting: GameSettings) -> Self {
         Self {
             settings: Rc::new(setting),
+            last_tick_time: Instant::now(),
             states: GameStates::new(),
+            render_primitives: Vec::new(),
         }
     }
 
@@ -197,8 +218,22 @@ impl Game {
         self.states.update(user_input_event);
     }
 
+    pub fn prepare_primitives(&mut self) {
+        let ms_delta = self.last_tick_time.elapsed().as_millis();
+
+        self.render_primitives.clear();
+        self.render_primitives.push(self.states.hero.render(ms_delta));
+        self.render_primitives.extend(
+            self.states
+                .hero_bullets
+                .iter()
+                .map(|bullet| bullet.render(ms_delta)),
+        );
+    }
+
     pub fn tick(&mut self) {
         self.states.tick(&self.settings);
+        self.last_tick_time = Instant::now();
     }
 
     pub fn hero(&self) -> Hero {
@@ -207,4 +242,14 @@ impl Game {
     pub fn bullets(&self) -> Box<[Bullet]> {
         self.states.hero_bullets.clone().into_boxed_slice()
     }
+
+    pub fn primitives(&self) -> *const Primitive {
+        self.render_primitives.as_ptr()
+    }
+    pub fn primitives_len(&self) -> usize {
+        self.render_primitives.len()
+    }
+    // pub fn primitive_size(&self) -> usize {
+    //     std::mem::size_of::<Primitive>()
+    // }
 }

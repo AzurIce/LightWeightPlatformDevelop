@@ -1,4 +1,7 @@
-use crate::{MotionState, UserInputEventReciever, UserInputEvent, GameSettings};
+use crate::{
+    render::{BitmapAsset, Primitive, Render},
+    GameSettings, MotionState, UserInputEvent, UserInputEventReciever,
+};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
@@ -20,6 +23,15 @@ impl UserInputEventReciever for Hero {
                 self.shooting = false;
             }
         }
+    }
+}
+
+impl Render for Hero {
+    fn render(&self, ms_delta: u128) -> Primitive {
+        Primitive::new(
+            BitmapAsset::Hero1,
+            (self.motion_state.x, self.motion_state.y),
+        )
     }
 }
 

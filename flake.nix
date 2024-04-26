@@ -40,6 +40,7 @@
 
           buildInputs = with pkgs; [
             wasm-pack
+            binaryen
             cargo-generate
             nodejs_21
           ] ++ [
