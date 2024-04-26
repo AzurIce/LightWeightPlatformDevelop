@@ -152,7 +152,7 @@ impl GameStates {
                     ..Default::default()
                 },
                 shooting: false,
-                shooting_cooldown: 10,
+                shooting_cooldown: 0,
             },
             hero_bullets: vec![],
         }
@@ -181,6 +181,10 @@ impl GameStates {
                 });
                 self.hero.shooting_cooldown = 10;
             } else {
+                self.hero.shooting_cooldown -= 1;
+            }
+        } else {
+            if self.hero.shooting_cooldown > 0 {
                 self.hero.shooting_cooldown -= 1;
             }
         }
