@@ -1,16 +1,24 @@
 use crate::{
-    render::{BitmapAsset, Primitive, Render},
-    GameSettings, MotionState, UserInputEvent, UserInputEventReciever,
+    attribute::MotionAttribute, render::{BitmapAsset, Primitive, Render}, MotionState, UserInputEvent, UserInputEventReciever
 };
 use wasm_bindgen::prelude::wasm_bindgen;
+
+use super::Entity;
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub struct Hero {
     pub health: u16,
+    #[wasm_bindgen(skip)]
     pub motion_state: MotionState,
     pub shooting: bool,
     pub shooting_cooldown: u16,
+}
+
+impl Entity for Hero {
+    fn motion_attribute(&self) -> MotionAttribute {
+        MotionAttribute::AcceleratedWithFriction { acceleration: 4.0, friction: 1.6 }
+    }
 }
 
 impl UserInputEventReciever for Hero {
@@ -28,9 +36,10 @@ impl UserInputEventReciever for Hero {
 
 impl Render for Hero {
     fn render(&self, ms_delta: u128) -> Primitive {
+        let predicted_pos = self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
         Primitive::new(
             BitmapAsset::Hero1,
-            (self.motion_state.x, self.motion_state.y),
+            (predicted_pos.x, predicted_pos.y),
         )
     }
 }

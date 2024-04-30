@@ -100,7 +100,7 @@
       window.onresize = setSize;
 
       function drawImage(ctx, img, x, _y) {
-        // console.log(img)
+        // console.log("drawImage:", img)
         const y = canvas.height - _y;
         const w = img.width;
         const h = img.height;
@@ -126,13 +126,14 @@
       console.log("enter render loop...")
       let last_tick = Date.now();
       while (true) {
-        let hero = game.hero();
+        // let hero = game.hero();
 
-        stats.innerHTML = `
-        position: (${hero.motion_state.x.toFixed(2)}, ${hero.motion_state.y.toFixed(2)}),<br/>
-        speed: (${hero.motion_state.speed_x.toFixed(2)}, ${hero.motion_state.speed_y.toFixed(2)})<br/>
-        shooting: (${hero.shooting}, ${hero.shooting_cooldown}),
-        `;
+        // stats.innerHTML = `
+        // position: (${hero.motion_state.x.toFixed(2)}, ${hero.motion_state.y.toFixed(2)}),<br/>
+        // speed: (${hero.motion_state.speed_x.toFixed(2)}, ${hero.motion_state.speed_y.toFixed(2)})<br/>
+        // shooting: (${hero.shooting}, ${hero.shooting_cooldown}),
+        // `;
+        stats.innerHTML = game.debug_info();
 
         // console.time("RenderTick")
         let now = Date.now();
@@ -149,7 +150,7 @@
           const len = game.primitives_len();
           // const step = game.primitive_size();
           const step = 3;
-          const primitives_u8 = new Uint32Array(memory().buffer, primitives_ptr, len * step);
+          const primitives_u8 = new Uint8Array(memory().buffer, primitives_ptr, len * step * 4);
           const primitives_f32 = new Float32Array(memory().buffer, primitives_ptr, len * step);
 
 
@@ -158,9 +159,19 @@
           for (let i = 0; i < len * step; i += step) {
             const x = primitives_f32[i];
             const y = primitives_f32[i + 1];
-            const bitmap = primitives_u8[i + 2];
-            // console.log(primitives_f32[i], primitives_f32[i + 1], primitives_u8[i + 2])
-            drawImage(ctx, image_bitmaps[bitmap], x, y)
+            const bitmap = primitives_u8[(i + 2) * 4];
+            // console.log(primitives_f32[i], primitives_f32[i + 1])
+            // console.log(
+            //   primitives_u8[(i + 2) * 4 + 0],
+            //   primitives_u8[(i + 2) * 4 + 1],
+            //   primitives_u8[(i + 2) * 4 + 2],
+            //   primitives_u8[(i + 2) * 4 + 3]
+            // )
+            try {
+              drawImage(ctx, image_bitmaps[bitmap], x, y)
+            } catch(e) {
+              console.error("draw error:", e)
+            }
           }
           await new Promise(r => setTimeout(r, 1));
         }

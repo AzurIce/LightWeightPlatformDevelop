@@ -60,6 +60,7 @@ pub fn bitmap_filename(bitmap_asset: BitmapAsset) -> String {
 	}.to_string()
 }
 
+#[allow(unused)]
 #[wasm_bindgen]
 pub struct Primitive {
 	bitmap: BitmapAsset,
