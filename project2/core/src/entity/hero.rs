@@ -1,5 +1,7 @@
 use crate::{
-    attribute::MotionAttribute, render::{BitmapAsset, Primitive, Render}, MotionState, UserInputEvent, UserInputEventReciever
+    attribute::MotionAttribute,
+    render::{BitmapAsset, Primitive, Render},
+    MotionState, UserInputEvent, UserInputEventReciever,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -17,13 +19,49 @@ pub struct Hero {
 
 impl Entity for Hero {
     fn motion_attribute(&self) -> MotionAttribute {
-        MotionAttribute::AcceleratedWithFriction { acceleration: 4.0, friction: 1.6 }
+        MotionAttribute::AcceleratedWithFriction {
+            acceleration: 4.0,
+            friction: 1.6,
+        }
     }
 }
 
 impl UserInputEventReciever for Hero {
     fn update(&mut self, user_input_event: &UserInputEvent) {
-        self.motion_state.update(user_input_event);
+        // self.motion_state.update(user_input_event);
+
+        match user_input_event.key().as_str() {
+            "w" => {
+                if user_input_event.pressed {
+                    self.motion_state.acc.y = self.motion_state.acc_val;
+                } else {
+                    self.motion_state.acc.y = 0.0;
+                }
+            }
+            "a" => {
+                if user_input_event.pressed {
+                    self.motion_state.acc.x = -self.motion_state.acc_val;
+                } else {
+                    self.motion_state.acc.x = 0.0;
+                }
+            }
+            "s" => {
+                if user_input_event.pressed {
+                    self.motion_state.acc.y = -self.motion_state.acc_val;
+                } else {
+                    self.motion_state.acc.y = 0.0;
+                }
+            }
+            "d" => {
+                if user_input_event.pressed {
+                    self.motion_state.acc.x = self.motion_state.acc_val;
+                } else {
+                    self.motion_state.acc.x = 0.0;
+                }
+            }
+            _ => (),
+        }
+
         if user_input_event.key().as_str() == " " {
             if user_input_event.pressed {
                 self.shooting = true;
@@ -36,11 +74,9 @@ impl UserInputEventReciever for Hero {
 
 impl Render for Hero {
     fn render(&self, ms_delta: u128) -> Primitive {
-        let predicted_pos = self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
-        Primitive::new(
-            BitmapAsset::Hero1,
-            (predicted_pos.x, predicted_pos.y),
-        )
+        let predicted_pos =
+            self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
+        Primitive::new(BitmapAsset::Hero1, (predicted_pos.x, predicted_pos.y), 0.0)
     }
 }
 

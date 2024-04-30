@@ -1,6 +1,5 @@
-use crate::{attribute::MotionAttribute, input::{UserInputEvent, UserInputEventReciever}, GameSettings};
+use crate::{attribute::MotionAttribute, GameSettings};
 use nalgebra::Vector2;
-use wasm_bindgen::prelude::*;
 
 pub mod hero;
 
@@ -16,42 +15,6 @@ pub struct MotionState {
     // constant
     pub acc_val: f32,
     pub friction: f32,
-}
-
-impl UserInputEventReciever for MotionState {
-    fn update(&mut self, user_input_event: &UserInputEvent) {
-        match user_input_event.key().as_str() {
-            "w" => {
-                if user_input_event.pressed {
-                    self.acc.y = self.acc_val;
-                } else {
-                    self.acc.y = 0.0;
-                }
-            }
-            "a" => {
-                if user_input_event.pressed {
-                    self.acc.x = -self.acc_val;
-                } else {
-                    self.acc.x = 0.0;
-                }
-            }
-            "s" => {
-                if user_input_event.pressed {
-                    self.acc.y = -self.acc_val;
-                } else {
-                    self.acc.y = 0.0;
-                }
-            }
-            "d" => {
-                if user_input_event.pressed {
-                    self.acc.x = self.acc_val;
-                } else {
-                    self.acc.x = 0.0;
-                }
-            }
-            _ => (),
-        }
-    }
 }
 
 impl MotionState {

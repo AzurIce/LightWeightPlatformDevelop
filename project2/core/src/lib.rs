@@ -4,12 +4,12 @@ pub mod input;
 pub mod render;
 
 use entity::{hero::Hero, MotionState};
-use input::{UserInput, UserInputEvent, UserInputEventReciever};
+use input::{UserInputEvent, UserInputEventReciever};
 use nalgebra::Vector2;
 use render::{BitmapAsset, Primitive};
 
 use instant::Instant;
-use std::{borrow::Borrow, cell::RefCell, rc::Rc};
+use std::rc::Rc;
 // use std::time::Instant;
 
 use wasm_bindgen::prelude::*;
@@ -35,9 +35,13 @@ impl Bullet {
 
 impl Render for Bullet {
     fn render(&self, ms_delta: u128) -> Primitive {
+        let predicted_pos =
+            self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
+
         Primitive::new(
             BitmapAsset::BulletPlayer,
-            (self.motion_state.pos.x, self.motion_state.pos.y),
+            (predicted_pos.x, predicted_pos.y),
+            0.0,
         )
     }
 }

@@ -65,13 +65,15 @@ pub fn bitmap_filename(bitmap_asset: BitmapAsset) -> String {
 pub struct Primitive {
 	bitmap: BitmapAsset,
 	position: (f32, f32), // x, y
+	rotate_angle_rad: f32, // rotation in rad
 }
 
 impl Primitive {
-	pub fn new(bitmap: BitmapAsset, position: (f32, f32)) -> Self {
+	pub fn new(bitmap: BitmapAsset, position: (f32, f32), rotate_angle_rad: f32) -> Self {
 		Self {
 			bitmap,
 			position,
+			rotate_angle_rad,
 		}
 	}
 }

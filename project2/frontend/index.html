@@ -99,12 +99,17 @@
       setSize();
       window.onresize = setSize;
 
-      function drawImage(ctx, img, x, _y) {
-        // console.log("drawImage:", img)
+      function drawImage(ctx, img, x, _y, rotate_angle_rad) {
         const y = canvas.height - _y;
+        // console.log("drawImage:", img, x, y, rotate_angle_rad)
+        ctx.save()
+        ctx.translate(x, y);
+        ctx.rotate(rotate_angle_rad);
         const w = img.width;
         const h = img.height;
-        ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+        ctx.drawImage(img, -w/2, -h/2, w, h);
+        // ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+        ctx.restore()
       }
 
       // Create Game
@@ -149,7 +154,7 @@
           const primitives_ptr = game.primitives();
           const len = game.primitives_len();
           // const step = game.primitive_size();
-          const step = 3;
+          const step = 4;
           const primitives_u8 = new Uint8Array(memory().buffer, primitives_ptr, len * step * 4);
           const primitives_f32 = new Float32Array(memory().buffer, primitives_ptr, len * step);
 
@@ -159,8 +164,9 @@
           for (let i = 0; i < len * step; i += step) {
             const x = primitives_f32[i];
             const y = primitives_f32[i + 1];
-            const bitmap = primitives_u8[(i + 2) * 4];
-            // console.log(primitives_f32[i], primitives_f32[i + 1])
+            const rotate_angle_rad = primitives_f32[i + 2];
+            const bitmap = primitives_u8[(i + 3) * 4];
+            // console.log(primitives_f32[i], primitives_f32[i + 1], primitives_f32[i + 2], primitives_f32[i + 3])
             // console.log(
             //   primitives_u8[(i + 2) * 4 + 0],
             //   primitives_u8[(i + 2) * 4 + 1],
@@ -168,7 +174,11 @@
             //   primitives_u8[(i + 2) * 4 + 3]
             // )
             try {
-              drawImage(ctx, image_bitmaps[bitmap], x, y)
+              // ctx.save()
+              // ctx.rotate(3.14);
+              drawImage(ctx, image_bitmaps[bitmap], x, y, rotate_angle_rad)
+              // ctx.restore()
+              // ctx.rotate(-3.14);
             } catch(e) {
               console.error("draw error:", e)
             }
