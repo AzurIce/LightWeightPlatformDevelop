@@ -1,51 +1,27 @@
+pub mod animation;
 pub mod attribute;
 pub mod entity;
 pub mod input;
 pub mod render;
-pub mod animation;
 
-use entity::{hero::Hero, MotionState};
+use entity::{
+    bullet::Bullet,
+    enemy::{Enemy, Enemy1},
+    hero::Hero,
+    MotionState,
+};
 use input::{UserInputEvent, UserInputEventReciever};
 use nalgebra::Vector2;
-use render::{BitmapAsset, Primitive};
+use render::Primitive;
 
 use instant::Instant;
 use std::rc::Rc;
+use web_sys::console;
 // use std::time::Instant;
 
 use wasm_bindgen::prelude::*;
 
 use crate::render::Render;
-
-#[derive(Clone, Copy)]
-pub struct Bullet {
-    pub motion_state: MotionState,
-}
-
-impl Bullet {
-    fn new(x: f32, y: f32, speed_x: f32, speed_y: f32) -> Self {
-        Self {
-            motion_state: MotionState {
-                pos: Vector2::new(x, y),
-                speed: Vector2::new(speed_x, speed_y),
-                ..Default::default()
-            },
-        }
-    }
-}
-
-impl Render for Bullet {
-    fn render(&self, ms_delta: u128) -> Primitive {
-        let predicted_pos =
-            self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
-
-        Primitive::new(
-            BitmapAsset::BulletPlayer,
-            (predicted_pos.x, predicted_pos.y),
-            0.0,
-        )
-    }
-}
 
 // settings states and game
 
@@ -65,15 +41,21 @@ impl GameSettings {
 
 #[wasm_bindgen]
 pub struct GameStates {
+    score: u32,
     hero: Hero,
     hero_bullets: Vec<Bullet>,
+    enemies: Vec<Enemy>,
+    enemy_bullets: Vec<Bullet>,
 }
 
 impl GameStates {
     pub fn new() -> Self {
         Self {
+            score: 0,
             hero: Hero::new(0.0, 0.0),
             hero_bullets: vec![],
+            enemies: vec![],
+            enemy_bullets: vec![],
         }
     }
 
@@ -82,7 +64,9 @@ impl GameStates {
     }
 
     pub fn tick(&mut self, settings: &GameSettings) {
+        // internal state of hero
         self.hero.tick(settings);
+
         if self.hero.shooting {
             if self.hero.shooting_cooldown <= 0 {
                 self.hero_bullets.push(Bullet {
@@ -101,14 +85,74 @@ impl GameStates {
                 self.hero.shooting_cooldown -= 1;
             }
         }
+
+        // bullets
         for bullet in self.hero_bullets.iter_mut() {
             bullet.motion_state.tick(settings);
             // TODO: collision detection
         }
+
+        // spawn enemies
+        let max_enemy_cnt = get_total_cnt_by_score(self.score);
+        let gen_frac = get_gen_frac_by_score(self.score);
+        let enemy_type = rand::random::<f32>();
+        let gen_enemy = || {
+            if enemy_type < gen_frac.0 {
+                Enemy::SmallCup(Enemy1::new(0.0, settings.height as f32))
+            } else {
+                Enemy::SmallCup(Enemy1::new(0.0, settings.height as f32))
+            }
+        };
+
+        console::log(&JsValue::from_str(&format!("max_enemy_cnt: {}", max_enemy_cnt)).into());
+        while self.enemies.len() < max_enemy_cnt as usize {
+            let enemy = gen_enemy();
+            self.enemies.push(enemy);
+        }
+
+        for enemy in &mut self.enemies {
+            match enemy {
+                Enemy::SmallCup(enemy) => {
+                    enemy.tick(settings)
+
+                    // TODO: collision detection
+                }
+            }
+        }
+
+        self.enemies.retain(|enemy| {
+            match enemy {
+                Enemy::SmallCup(enemy) => {
+                    enemy.motion_state.pos.y <= 0.0
+                }
+            }
+        });
+
+        console::log(
+            &JsValue::from_str(&format!("enemies: {}", self.enemies.len()).as_str()).into(),
+        );
         self.hero_bullets.retain(|bullet| {
             bullet.motion_state.pos.y > 0.0 && bullet.motion_state.pos.y < settings.height as f32
         });
     }
+}
+
+/// Difficulty cauculation
+fn get_gen_frac_by_score(score: u32) -> (f32, f32, f32) {
+    let small = score / 100 % 10;
+    let middle = score / 10 % 10;
+    let big = score % 10;
+    let total = small + middle + big;
+
+    (
+        small as f32 / total as f32,
+        middle as f32 / total as f32,
+        big as f32 / total as f32,
+    )
+}
+
+fn get_total_cnt_by_score(score: u32) -> u32 {
+    (score / 10).max(1)
 }
 
 #[wasm_bindgen]
@@ -144,6 +188,18 @@ impl Game {
         self.render_primitives.extend(
             self.states
                 .hero_bullets
+                .iter()
+                .map(|bullet| bullet.render(ms_delta)),
+        );
+        self.render_primitives.extend(
+            self.states
+                .enemies
+                .iter()
+                .map(|enemy| enemy.render(ms_delta)),
+        );
+        self.render_primitives.extend(
+            self.states
+                .enemy_bullets
                 .iter()
                 .map(|bullet| bullet.render(ms_delta)),
         );

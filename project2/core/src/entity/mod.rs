@@ -2,6 +2,13 @@ use crate::{attribute::MotionAttribute, GameSettings};
 use nalgebra::Vector2;
 
 pub mod hero;
+pub mod enemy;
+pub mod bullet;
+
+pub trait CollisionBox {
+    /// (width, height)
+    fn bounding_box(&self) -> (f32, f32);
+}
 
 pub trait Entity {
     fn motion_attribute(&self) -> MotionAttribute;
