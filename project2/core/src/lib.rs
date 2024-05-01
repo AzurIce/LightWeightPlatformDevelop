@@ -90,28 +90,7 @@ impl GameStates {
         // hero_bullets
         for bullet in self.hero_bullets.iter_mut() {
             bullet.motion_state.tick(settings);
-            for enemy in &mut self.enemies {
-                match enemy {
-                    Enemy::SmallCup(enemy) => {
-                        if collisioned(bullet, enemy) {
-                            console::log(&JsValue::from_str("collision").into());
-                            enemy.health -= 1;
-                        }
-                    }
-                }
-            }
-            // TODO: collision detection
         }
-
-        // Remove enemy with emtpy health
-        self.enemies.retain(|enemy| match enemy {
-            Enemy::SmallCup(enemy) => {
-                if enemy.health <= 0 {
-                    self.score += 2
-                };
-                enemy.health > 0 && enemy.motion_state.pos.y > 0.0
-            },
-        });
 
         // spawn enemies
         let max_enemy_cnt = get_total_cnt_by_score(self.score);
@@ -141,9 +120,34 @@ impl GameStates {
             }
         }
 
+        // Retain hero_bullets:
+        // - collisioned: update enemy health, and remove bullet
+        // - out of screen: simply remove
         self.hero_bullets.retain(|bullet| {
+            for enemy in &mut self.enemies {
+                match enemy {
+                    Enemy::SmallCup(enemy) => {
+                        if collisioned(bullet, enemy) {
+                            console::log(&JsValue::from_str("collision").into());
+                            enemy.health -= 1;
+                            return false;
+                        }
+                    }
+                }
+            }
             bullet.motion_state.pos.y > 0.0 && bullet.motion_state.pos.y < settings.height as f32
         });
+
+        // Remove enemy with emtpy health and count score
+        self.enemies.retain(|enemy| match enemy {
+            Enemy::SmallCup(enemy) => {
+                if enemy.health <= 0 {
+                    self.score += 2
+                };
+                enemy.health > 0 && enemy.motion_state.pos.y > 0.0
+            },
+        });
+
     }
 }
 
