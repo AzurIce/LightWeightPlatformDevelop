@@ -1,13 +1,25 @@
 use crate::{attribute::MotionAttribute, GameSettings};
 use nalgebra::Vector2;
 
-pub mod hero;
-pub mod enemy;
 pub mod bullet;
+pub mod enemy;
+pub mod hero;
 
 pub trait CollisionBox {
-    /// (width, height)
-    fn bounding_box(&self) -> (f32, f32);
+    /// (center_x, center_y, width, height)
+    fn bounding_box(&self) -> (f32, f32, f32, f32);
+}
+
+pub fn collisioned<A: CollisionBox, B: CollisionBox>(a: &A, b: &B) -> bool {
+    if (a.bounding_box().0 - b.bounding_box().0).abs()
+        <= (a.bounding_box().2 + b.bounding_box().2) / 2.0
+        && (a.bounding_box().1 - b.bounding_box().1).abs()
+            <= (a.bounding_box().3 + b.bounding_box().3) / 2.0
+    {
+        true
+    } else {
+        false
+    }
 }
 
 pub trait Entity {

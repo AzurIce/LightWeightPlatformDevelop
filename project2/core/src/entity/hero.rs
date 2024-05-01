@@ -16,6 +16,7 @@ pub struct Hero {
     animation: AnimatedBitmap,
 }
 
+
 impl Hero {
     pub fn new(x: f32, y: f32) -> Self {
         Self {

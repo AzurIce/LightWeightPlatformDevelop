@@ -2,12 +2,18 @@ use nalgebra::Vector2;
 
 use crate::render::{BitmapAsset, Primitive, Render};
 
-use super::MotionState;
+use super::{CollisionBox, MotionState};
 
 
 #[derive(Clone, Copy)]
 pub struct Bullet {
     pub motion_state: MotionState,
+}
+
+impl CollisionBox for Bullet {
+    fn bounding_box(&self) -> (f32, f32, f32, f32) {
+        (self.motion_state.pos.x, self.motion_state.pos.y, 5.0, 11.0)
+    }
 }
 
 impl Bullet {

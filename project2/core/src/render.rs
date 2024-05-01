@@ -4,29 +4,29 @@ use wasm_bindgen::prelude::*;
 #[repr(u8)]
 #[derive(Clone, Copy)]
 pub enum BitmapAsset {
-	BulletEnemy,
+	BulletEnemy, // 5 11
 	BulletPlayer,
-	Enemy1,
-	Enemy1Down1,
+	Enemy1, // 57 43
+	Enemy1Down1, // 57 51
 	Enemy1Down2,
 	Enemy1Down3,
 	Enemy1Down4,
-	Enemy2,
+	Enemy2, // 69 99
 	Enemy2Hit,
-	Enemy2Down1,
+	Enemy2Down1, // 69 95
 	Enemy2Down2,
 	Enemy2Down3,
 	Enemy2Down4,
-	Enemy3N1,
+	Enemy3N1, // 169 258
 	Enemy3N2,
 	Enemy3Hit,
-	Enemy3Down1,
+	Enemy3Down1, // 165 261
 	Enemy3Down2,
-	Enemy3Down3,
-	Enemy3Down4,
-	Enemy3Down5,
-	Enemy3Down6,
-	Hero1,
+	Enemy3Down3, // 165 260
+	Enemy3Down4, // 165 261
+	Enemy3Down5, // 166 260
+	Enemy3Down6, /// 166 261
+	Hero1, // 102 126
 	Hero2,
 }
 

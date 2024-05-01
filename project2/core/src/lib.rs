@@ -6,6 +6,7 @@ pub mod render;
 
 use entity::{
     bullet::Bullet,
+    collisioned,
     enemy::{Enemy, Enemy1},
     hero::Hero,
     MotionState,
@@ -19,7 +20,7 @@ use std::rc::Rc;
 use web_sys::console;
 // use std::time::Instant;
 
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{convert::IntoWasmAbi, prelude::*};
 
 use crate::render::Render;
 
@@ -86,25 +87,45 @@ impl GameStates {
             }
         }
 
-        // bullets
+        // hero_bullets
         for bullet in self.hero_bullets.iter_mut() {
             bullet.motion_state.tick(settings);
+            for enemy in &mut self.enemies {
+                match enemy {
+                    Enemy::SmallCup(enemy) => {
+                        if collisioned(bullet, enemy) {
+                            console::log(&JsValue::from_str("collision").into());
+                            enemy.health -= 1;
+                        }
+                    }
+                }
+            }
             // TODO: collision detection
         }
+
+        // Remove enemy with emtpy health
+        self.enemies.retain(|enemy| match enemy {
+            Enemy::SmallCup(enemy) => {
+                if enemy.health <= 0 {
+                    self.score += 2
+                };
+                enemy.health > 0 && enemy.motion_state.pos.y > 0.0
+            },
+        });
 
         // spawn enemies
         let max_enemy_cnt = get_total_cnt_by_score(self.score);
         let gen_frac = get_gen_frac_by_score(self.score);
         let enemy_type = rand::random::<f32>();
         let gen_enemy = || {
+            let x = rand::random::<f32>() * settings.width as f32;
             if enemy_type < gen_frac.0 {
-                Enemy::SmallCup(Enemy1::new(0.0, settings.height as f32))
+                Enemy::SmallCup(Enemy1::new(x, settings.height as f32))
             } else {
-                Enemy::SmallCup(Enemy1::new(0.0, settings.height as f32))
+                Enemy::SmallCup(Enemy1::new(x, settings.height as f32))
             }
         };
 
-        console::log(&JsValue::from_str(&format!("max_enemy_cnt: {}", max_enemy_cnt)).into());
         while self.enemies.len() < max_enemy_cnt as usize {
             let enemy = gen_enemy();
             self.enemies.push(enemy);
@@ -120,17 +141,6 @@ impl GameStates {
             }
         }
 
-        self.enemies.retain(|enemy| {
-            match enemy {
-                Enemy::SmallCup(enemy) => {
-                    enemy.motion_state.pos.y <= 0.0
-                }
-            }
-        });
-
-        console::log(
-            &JsValue::from_str(&format!("enemies: {}", self.enemies.len()).as_str()).into(),
-        );
         self.hero_bullets.retain(|bullet| {
             bullet.motion_state.pos.y > 0.0 && bullet.motion_state.pos.y < settings.height as f32
         });
@@ -139,10 +149,10 @@ impl GameStates {
 
 /// Difficulty cauculation
 fn get_gen_frac_by_score(score: u32) -> (f32, f32, f32) {
-    let small = score / 100 % 10;
-    let middle = score / 10 % 10;
-    let big = score % 10;
-    let total = small + middle + big;
+    let big = score / 1000 % 10;
+    let middle = score / 100 % 10;
+    let small = (score / 10 % 10).max(1);
+    let total = (small + middle + big).max(1);
 
     (
         small as f32 / total as f32,
@@ -226,7 +236,8 @@ impl Game {
 
     pub fn debug_info(&self) -> String {
         format!(
-            "position: ({}, {}),<br/>speed: ({}, {})<br/>shooting: {}, {}",
+            "score: {},<br/>position: ({}, {}),<br/>speed: ({}, {})<br/>shooting: {}, {}",
+            self.states.score,
             self.states.hero.motion_state.pos.x,
             self.states.hero.motion_state.pos.y,
             self.states.hero.motion_state.speed.x,

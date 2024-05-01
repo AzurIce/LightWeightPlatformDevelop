@@ -8,7 +8,7 @@ use crate::{
     GameSettings,
 };
 
-use super::{Entity, MotionState};
+use super::{CollisionBox, Entity, MotionState};
 
 pub enum Enemy {
     SmallCup(Enemy1),
@@ -51,6 +51,12 @@ impl Enemy1 {
     pub fn tick(&mut self, settings: &GameSettings) {
         self.motion_state.tick(settings);
         self.animation.tick();
+    }
+}
+
+impl CollisionBox for Enemy1 {
+    fn bounding_box(&self) -> (f32, f32, f32, f32) {
+        (self.motion_state.pos.x, self.motion_state.pos.y, 57.0, 43.0)
     }
 }
 
