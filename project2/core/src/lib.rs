@@ -2,6 +2,7 @@ pub mod attribute;
 pub mod entity;
 pub mod input;
 pub mod render;
+pub mod animation;
 
 use entity::{hero::Hero, MotionState};
 use input::{UserInputEvent, UserInputEventReciever};
@@ -64,23 +65,14 @@ impl GameSettings {
 
 #[wasm_bindgen]
 pub struct GameStates {
-    pub hero: Hero,
+    hero: Hero,
     hero_bullets: Vec<Bullet>,
 }
 
 impl GameStates {
     pub fn new() -> Self {
         Self {
-            hero: Hero {
-                health: 100,
-                motion_state: MotionState {
-                    acc_val: 4.0,
-                    friction: 1.6,
-                    ..Default::default()
-                },
-                shooting: false,
-                shooting_cooldown: 0,
-            },
+            hero: Hero::new(0.0, 0.0),
             hero_bullets: vec![],
         }
     }
@@ -90,7 +82,7 @@ impl GameStates {
     }
 
     pub fn tick(&mut self, settings: &GameSettings) {
-        self.hero.motion_state.tick(settings);
+        self.hero.tick(settings);
         if self.hero.shooting {
             if self.hero.shooting_cooldown <= 0 {
                 self.hero_bullets.push(Bullet {

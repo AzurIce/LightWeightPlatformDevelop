@@ -1,8 +1,8 @@
-use nalgebra::Point2;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 #[repr(u8)]
+#[derive(Clone, Copy)]
 pub enum BitmapAsset {
 	BulletEnemy,
 	BulletPlayer,

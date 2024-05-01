@@ -80,7 +80,10 @@
       await init_image_bitmaps();
 
       // Init
-      const SETTINGS = new GameSettings(480, 700);
+      const SETTINGS = {
+        width: 480,
+        height: 700,
+      };
 
       const canvas = document.getElementById("canvas");
       canvas.width = SETTINGS.width;
@@ -113,7 +116,8 @@
       }
 
       // Create Game
-      let game = new Game(SETTINGS);
+      let settings = new GameSettings(SETTINGS.width, SETTINGS.height);
+      let game = new Game(settings);
 
       function keydown_handler(event) {
         // console.log(event);

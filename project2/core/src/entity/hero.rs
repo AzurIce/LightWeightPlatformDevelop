@@ -1,20 +1,43 @@
 use crate::{
-    attribute::MotionAttribute,
-    render::{BitmapAsset, Primitive, Render},
-    MotionState, UserInputEvent, UserInputEventReciever,
+    animation::AnimatedBitmap, attribute::MotionAttribute, render::{BitmapAsset, Primitive, Render}, GameSettings, MotionState, UserInputEvent, UserInputEventReciever
 };
+use nalgebra::Vector2;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use super::Entity;
 
 #[wasm_bindgen]
-#[derive(Clone, Copy)]
 pub struct Hero {
     pub health: u16,
     #[wasm_bindgen(skip)]
     pub motion_state: MotionState,
     pub shooting: bool,
     pub shooting_cooldown: u16,
+    animation: AnimatedBitmap,
+}
+
+impl Hero {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self {
+            health: 100,
+            motion_state: MotionState {
+                pos: Vector2::new(x, y),
+                speed: Vector2::zeros(),
+                acc: Vector2::zeros(),
+                acc_val: 4.0,
+                friction: 1.6,
+            },
+            shooting: false,
+            shooting_cooldown: 0,
+            animation: AnimatedBitmap::new(vec![BitmapAsset::Hero1, BitmapAsset::Hero2], 3)
+        }
+    }
+
+    /// The tick method of an entity only handles it self's inner state
+    pub fn tick(&mut self, settings: &GameSettings) {
+        self.motion_state.tick(settings);
+        self.animation.tick();
+    }
 }
 
 impl Entity for Hero {
@@ -76,7 +99,10 @@ impl Render for Hero {
     fn render(&self, ms_delta: u128) -> Primitive {
         let predicted_pos =
             self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
-        Primitive::new(BitmapAsset::Hero1, (predicted_pos.x, predicted_pos.y), 0.0)
+
+        let bitmap = self.animation.cur_bitmap();
+
+        Primitive::new(bitmap, (predicted_pos.x, predicted_pos.y), 0.0)
     }
 }
 
