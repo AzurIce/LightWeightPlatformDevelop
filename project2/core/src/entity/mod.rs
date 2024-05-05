@@ -1,9 +1,19 @@
+use wasm_bindgen::prelude::*;
 use crate::{attribute::MotionAttribute, GameSettings};
 use nalgebra::Vector2;
 
 pub mod bullet;
 pub mod enemy;
 pub mod hero;
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum EntityState {
+    Normal,
+    HittedAnimating,
+    DieAnimating,
+    Died
+}
 
 pub trait CollisionBox {
     /// (center_x, center_y, width, height)

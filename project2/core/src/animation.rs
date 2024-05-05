@@ -19,12 +19,20 @@ impl AnimationTicker {
         }
     }
     
-    pub fn tick(&mut self) {
+    /// return value represents whether if a cycle is done
+    pub fn tick(&mut self) -> bool {
         self.tick_cnt += 1;
         if self.tick_cnt == self.tick_per_frame {
             self.tick_cnt = 0;
-            self.cur = (self.cur + 1) % self.total;
+            self.cur += 1;
+            if self.cur == self.total {
+                self.cur = 0;
+                return true;
+            } else {
+                return false;
+            }
         }
+        false
     }
 }
 
@@ -41,7 +49,7 @@ impl AnimatedBitmap {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self) -> bool {
         self.animation_tick.tick()
     }
 
