@@ -1,10 +1,13 @@
 use crate::{
-    animation::AnimatedBitmap, attribute::MotionAttribute, render::{BitmapAsset, Primitive, Render}, GameSettings, MotionState, UserInputEvent, UserInputEventReciever
+    animation::AnimatedBitmap,
+    attribute::MotionAttribute,
+    render::{BitmapAsset, Primitive, Render},
+    GameSettings, MotionState, UserInputEvent, UserInputEventReciever,
 };
 use nalgebra::Vector2;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use super::Entity;
+use super::{CollisionBox, Entity, EntityState};
 
 #[wasm_bindgen]
 pub struct Hero {
@@ -13,9 +16,10 @@ pub struct Hero {
     pub motion_state: MotionState,
     pub shooting: bool,
     pub shooting_cooldown: u16,
+    pub state: EntityState,
     animation: AnimatedBitmap,
+    die_animation: AnimatedBitmap,
 }
-
 
 impl Hero {
     pub fn new(x: f32, y: f32) -> Self {
@@ -30,14 +34,36 @@ impl Hero {
             },
             shooting: false,
             shooting_cooldown: 0,
-            animation: AnimatedBitmap::new(vec![BitmapAsset::Hero1, BitmapAsset::Hero2], 3)
+            state: EntityState::Normal,
+            animation: AnimatedBitmap::new(vec![BitmapAsset::Hero1, BitmapAsset::Hero2], 3),
+            die_animation: AnimatedBitmap::new(
+                vec![
+                    BitmapAsset::HeroDown1,
+                    BitmapAsset::HeroDown2,
+                    BitmapAsset::HeroDown3,
+                    BitmapAsset::HeroDown4,
+                ],
+                2,
+            ),
         }
     }
 
     /// The tick method of an entity only handles it self's inner state
     pub fn tick(&mut self, settings: &GameSettings) {
-        self.motion_state.tick(settings);
-        self.animation.tick();
+        if self.state == EntityState::Normal {
+            self.motion_state.tick(settings);
+        }
+        match self.state {
+            EntityState::Normal => {
+                self.animation.tick();
+            }
+            EntityState::DieAnimating => {
+                if self.die_animation.tick() {
+                    self.state = EntityState::Died;
+                }
+            }
+            _ => (),
+        }
     }
 }
 
@@ -47,6 +73,17 @@ impl Entity for Hero {
             acceleration: 4.0,
             friction: 1.6,
         }
+    }
+}
+
+impl CollisionBox for Hero {
+    fn bounding_box(&self) -> (f32, f32, f32, f32) {
+        (
+            self.motion_state.pos.x,
+            self.motion_state.pos.y,
+            102.0,
+            126.0,
+        )
     }
 }
 
@@ -101,7 +138,11 @@ impl Render for Hero {
         let predicted_pos =
             self.motion_state.pos + (self.motion_state.speed / 50.0) * ms_delta as f32;
 
-        let bitmap = self.animation.cur_bitmap();
+        let bitmap = match self.state {
+            EntityState::Normal => self.animation.cur_bitmap(),
+            EntityState::DieAnimating => self.die_animation.cur_bitmap(),
+            _ => self.animation.cur_bitmap(),
+        };
 
         Primitive::new(bitmap, (predicted_pos.x, predicted_pos.y), 0.0)
     }

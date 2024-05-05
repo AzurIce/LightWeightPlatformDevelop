@@ -135,17 +135,26 @@ impl GameStates {
                     if enemy.health == 0 && enemy.state != EntityState::DieAnimating {
                         enemy.state = EntityState::DieAnimating;
                     }
+                    if collisioned(enemy, &self.hero) && self.hero.state == EntityState::Normal {
+                        self.hero.state = EntityState::DieAnimating
+                    }
                     enemy.tick(settings)
                 }
                 Enemy::BigCup(enemy) => {
                     if enemy.health == 0 && enemy.state != EntityState::DieAnimating {
                         enemy.state = EntityState::DieAnimating;
                     }
+                    if collisioned(enemy, &self.hero) && self.hero.state == EntityState::Normal {
+                        self.hero.state = EntityState::DieAnimating
+                    }
                     enemy.tick(settings)
                 }
                 Enemy::SuperBigCup(enemy) => {
                     if enemy.health == 0 && enemy.state != EntityState::DieAnimating {
                         enemy.state = EntityState::DieAnimating;
+                    }
+                    if collisioned(enemy, &self.hero) && self.hero.state == EntityState::Normal {
+                        self.hero.state = EntityState::DieAnimating
                     }
                     enemy.tick(settings)
                 }
@@ -229,9 +238,9 @@ impl GameStates {
     }
 }
 
-const MAX_SMALL_ENEMY: u32 = 7;
-const MAX_MIDDLE_ENEMY: u32 = 5;
-const MAX_BIG_ENEMY: u32 = 3;
+const MAX_SMALL_ENEMY: u32 = 5;
+const MAX_MIDDLE_ENEMY: u32 = 3;
+const MAX_BIG_ENEMY: u32 = 2;
 const MAX_SPEED_FRAC: f32 = 2.0;
 
 /// Difficulty cauculation
@@ -265,7 +274,7 @@ fn get_gen_frac_by_score(score: u32) -> (f32, f32, f32) {
 }
 
 fn get_total_cnt_by_score(score: u32) -> u32 {
-    (score / 3).max(1).min(15)
+    (score / 3).max(1).min(10)
 }
 
 #[wasm_bindgen]
@@ -349,7 +358,12 @@ impl Game {
             self.states.hero.shooting_cooldown
         )
     }
-    // pub fn primitive_size(&self) -> usize {
-    //     std::mem::size_of::<Primitive>()
-    // }
+
+    pub fn end(&self) -> bool {
+        self.states.hero.state == EntityState::Died
+    }
+
+    pub fn score(&self) -> u32 {
+        self.states.score
+    }
 }

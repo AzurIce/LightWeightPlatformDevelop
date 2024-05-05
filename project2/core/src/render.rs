@@ -28,6 +28,10 @@ pub enum BitmapAsset {
 	Enemy3Down6, /// 166 261
 	Hero1, // 102 126
 	Hero2,
+	HeroDown1,
+	HeroDown2,
+	HeroDown3,
+	HeroDown4,
 }
 
 #[wasm_bindgen]
@@ -57,6 +61,10 @@ pub fn bitmap_filename(bitmap_asset: BitmapAsset) -> String {
 		BitmapAsset::Enemy3Down6 => "enemy3_down6.png",
 		BitmapAsset::Hero1 => "hero1.png",
 		BitmapAsset::Hero2 => "hero2.png",
+		BitmapAsset::HeroDown1 => "hero_down1.png",
+		BitmapAsset::HeroDown2 => "hero_down2.png",
+		BitmapAsset::HeroDown3 => "hero_down3.png",
+		BitmapAsset::HeroDown4 => "hero_down4.png",
 	}.to_string()
 }
 

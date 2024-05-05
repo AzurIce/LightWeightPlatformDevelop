@@ -38,20 +38,242 @@
       position: absolute;
       top: 10px;
       z-index: 10;
+      font-size: 20px;
+    }
+
+    .panel {
+      position: absolute;
+      top: 0px;
+      left: 0px;
+      width: 100%;
+      height: 100%;
+      background-color: #cccccc;
+      opacity: 0.8;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
   </style>
 </head>
 
 <body>
-  <div id="stats"></div>
   <div id="app">
-    <canvas id="canvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
+    <div id="welcome-panel">
+      <h1>飞机大战</h1>
+      <button id="btn-start">开始游戏</button>
+    </div>
+
+    <div id="menu-panel" class="panel">
+      <div class="container">
+        <h2>Paused</h2>
+        <button id="btn-continue">continue</button>
+        <button id="btn-restart">restart</button>
+        <button id="btn-end">end</button>
+      </div>
+    </div>
+
+    <div id="game-panel">
+      <div id="stats"></div>
+      <canvas id="canvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
+    </div>
+
+    <div id="result-panel" class="panel">
+      <div class="container">
+        <h2>游戏结束</h2>
+        <div id="score"></div>
+        <button id="btn-return">回到主页</button>
+      </div>
+    </div>
   </div>
 
   <script type="module">
     import init, { Game, GameSettings, UserInputEvent, BitmapAsset, bitmap_filename, memory } from "../core/pkg/core.js";
+    import { load_image_bitmap } from "./utils.js";
 
-    // import { memory } from "../core/pkg/core_bg.wasm";
+    const SETTINGS = {
+      width: 480,
+      height: 700,
+    };
+
+    class FrontendGame {
+      constructor() {
+        this.app = document.getElementById("app");
+        function setSize(app) {
+          console.log("window.innerWidth", window.innerWidth, "window.innerHeight", window.innerHeight)
+          const widthRatio = window.innerWidth / SETTINGS.width;
+          const heightRatio = window.innerHeight / SETTINGS.height;
+          app.style.transform = `scale(${widthRatio < heightRatio ? widthRatio : heightRatio})`;
+        }
+        setSize(this.app);
+        window.onresize = () => setSize(this.app);
+
+        this.panel_welcome = document.getElementById("welcome-panel");
+        this.panel_game = document.getElementById("game-panel");
+        this.panel_game.hidden = true;
+
+        this.panel_menu = document.getElementById("menu-panel");
+        this.panel_menu.hidden = true;
+        this.paused = false;
+
+        this.panel_result = document.getElementById("result-panel");
+        this.panel_result.hidden = true;
+        this.end = false;
+        this.score = document.getElementById("score");
+
+        this.btn_continue = document.getElementById("btn-continue");
+        this.btn_continue.onclick = () => {
+          console.log("continue: ", this.paused, this.panel_menu.hidden)
+          this.paused = false;
+          this.panel_menu.hidden = true;
+        }
+        this.btn_restart = document.getElementById("btn-restart");
+        this.btn_restart.onclick = async () => {
+          this.game = null;
+          while (this.running) {
+            await new Promise(r => setTimeout(r, 1));
+          };
+          await this.startGame();
+        }
+        this.btn_end = document.getElementById("btn-end");
+        this.btn_end.onclick = async () => {
+          this.score.innerHTML = `分数：${this.game.score()}`
+          this.end = true;
+          this.panel_result.hidden = false;
+        }
+
+        this.btn_start = document.getElementById("btn-start");
+        this.btn_start.onclick = async (e) => {
+          this.panel_game.hidden = false;
+          this.panel_welcome.hidden = true;
+          await this.startGame()
+        }
+
+        this.btn_return = document.getElementById("btn-return");
+        this.btn_return.onclick = async (e) => {
+          this.end = false;
+          this.game = null;
+          this.panel_welcome.hidden = false;
+          this.panel_result.hidden = true;
+          this.panel_game.hidden = true;
+        }
+
+        this.canvas = document.getElementById("canvas");
+        this.canvas.width = SETTINGS.width;
+        this.canvas.height = SETTINGS.height;
+        this.ctx = canvas.getContext("2d");
+
+        this.stats = document.getElementById("stats");
+      }
+
+      drawImage(img, x, _y, rotate_angle_rad) {
+        const y = this.canvas.height - _y;
+        // console.log("drawImage:", img, x, y, rotate_angle_rad)
+        this.ctx.save()
+        this.ctx.translate(x, y);
+        this.ctx.rotate(rotate_angle_rad);
+        const w = img.width;
+        const h = img.height;
+        this.ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        // ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
+        this.ctx.restore()
+      }
+
+      async startGame() {
+        this.running = true;
+        this.paused = false;
+        this.panel_menu.hidden = true;
+        this.panel_result.hidden = true;
+
+        // Create Game
+        this.settings = new GameSettings(SETTINGS.width, SETTINGS.height);
+        this.game = new Game(this.settings);
+
+        const keydown_handler = (event) => {
+          console.log(event.key)
+          if (event.key == "Escape") {
+            if (this.paused) {
+              this.paused = false;
+              this.panel_menu.hidden = true;
+            } else {
+              this.paused = true;
+              this.panel_menu.hidden = false;
+            }
+          }
+          this.game.update(new UserInputEvent(event.key, 1))
+        }
+        const keyup_handler = (event) => {
+          this.game.update(new UserInputEvent(event.key, 0))
+        }
+
+        document.addEventListener('keydown', keydown_handler);
+        document.addEventListener('keyup', keyup_handler);
+
+        let last_tick = Date.now();
+        while (this.game && !this.game.end()) {
+          this.stats.innerHTML = this.game.debug_info();
+
+          if (this.paused) {
+            await new Promise(r => setTimeout(r, 1));
+            continue;
+          }
+          let now = Date.now();
+          if (now - last_tick > 50) {
+            this.game.tick();
+            last_tick = now;
+          }
+
+          const render_tick_start = Date.now();
+          this.game.prepare_primitives();
+
+          const draw_primitives = async () => {
+            const primitives_ptr = this.game.primitives();
+            const len = this.game.primitives_len();
+            // const step = game.primitive_size();
+            const step = 4;
+            const primitives_u8 = new Uint8Array(memory().buffer, primitives_ptr, len * step * 4);
+            const primitives_f32 = new Float32Array(memory().buffer, primitives_ptr, len * step);
+
+
+            for (let i = 0; i < len * step; i += step) {
+              const x = primitives_f32[i];
+              const y = primitives_f32[i + 1];
+              const rotate_angle_rad = primitives_f32[i + 2];
+              const bitmap = primitives_u8[(i + 3) * 4];
+              try {
+                this.drawImage(image_bitmaps[bitmap], x, y, rotate_angle_rad)
+              } catch (e) {
+                console.error("draw error:", e)
+              }
+            }
+            await new Promise(r => setTimeout(r, 1));
+          }
+
+          // bg
+          this.ctx.fillStyle = "#eeeeee";
+          this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await draw_primitives()
+
+          const render_tick_end = Date.now();
+          const render_tick_cost_ms = render_tick_end - render_tick_start;
+          await new Promise(r => setTimeout(r, Math.max(render_tick_ms - render_tick_cost_ms)));
+          // console.timeEnd("RenderTick")
+        }
+
+        document.removeEventListener('keydown', keydown_handler);
+        document.removeEventListener('keyup', keyup_handler);
+
+        this.running = false;
+        if (this.game != null) {
+          this.score.innerHTML = `分数：${this.game.score()}`
+          this.end = true;
+          this.panel_result.hidden = false;
+        }
+      }
+    }
 
     var image_bitmaps = {};
     async function init_image_bitmaps() {
@@ -63,171 +285,13 @@
       console.log(image_bitmaps)
     }
 
-    async function load_image_bitmap(name) {
-      const image_response = await fetch(`./images/${name}`);
-      const image_blob = await image_response.blob();
-      return await createImageBitmap(image_blob);
-    }
-
-    // const me2 = await load_image_bitmap("me2.png")
-    // const hero_bullet = await load_image_bitmap("bullet1.png")
-
     const fps_limit = 60;
     const render_tick_ms = 1000 / fps_limit; // 16.66667ms
     async function run() {
-      await init();
+      await init(); // init wasm
+      await init_image_bitmaps(); // init assets
 
-      // console.log(image_bitmaps)
-      await init_image_bitmaps();
-
-      // Init
-      const SETTINGS = {
-        width: 480,
-        height: 700,
-      };
-
-      const canvas = document.getElementById("canvas");
-      canvas.width = SETTINGS.width;
-      canvas.height = SETTINGS.height;
-      const ctx = canvas.getContext("2d");
-
-      const stats = document.getElementById("stats");
-
-      var app = document.getElementById("app");
-      function setSize() {
-        console.log("window.innerWidth", window.innerWidth, "window.innerHeight", window.innerHeight)
-        const widthRatio = window.innerWidth / SETTINGS.width;
-        const heightRatio = window.innerHeight / SETTINGS.height;
-        app.style.transform = `scale(${widthRatio < heightRatio ? widthRatio : heightRatio})`;
-      }
-      setSize();
-      window.onresize = setSize;
-
-      function drawImage(ctx, img, x, _y, rotate_angle_rad) {
-        const y = canvas.height - _y;
-        // console.log("drawImage:", img, x, y, rotate_angle_rad)
-        ctx.save()
-        ctx.translate(x, y);
-        ctx.rotate(rotate_angle_rad);
-        const w = img.width;
-        const h = img.height;
-        ctx.drawImage(img, -w/2, -h/2, w, h);
-        // ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
-        ctx.restore()
-      }
-
-      // Create Game
-      let settings = new GameSettings(SETTINGS.width, SETTINGS.height);
-      let game = new Game(settings);
-
-      function keydown_handler(event) {
-        // console.log(event);
-        game.update(new UserInputEvent(event.key, 1))
-      }
-      function keyup_handler(event) {
-        // console.log(event);
-        game.update(new UserInputEvent(event.key, 0))
-      }
-
-      console.log("adding event listeners...")
-      document.addEventListener('keydown', keydown_handler);
-      document.addEventListener('keyup', keyup_handler);
-
-      console.log("enter render loop...")
-      let last_tick = Date.now();
-      while (true) {
-        // let hero = game.hero();
-
-        // stats.innerHTML = `
-        // position: (${hero.motion_state.x.toFixed(2)}, ${hero.motion_state.y.toFixed(2)}),<br/>
-        // speed: (${hero.motion_state.speed_x.toFixed(2)}, ${hero.motion_state.speed_y.toFixed(2)})<br/>
-        // shooting: (${hero.shooting}, ${hero.shooting_cooldown}),
-        // `;
-        stats.innerHTML = game.debug_info();
-
-        // console.time("RenderTick")
-        let now = Date.now();
-        if (now - last_tick > 50) {
-          game.tick();
-          last_tick = now;
-        }
-
-        const render_tick_start = Date.now();
-        game.prepare_primitives();
-
-        const draw_primitives = async () => {
-          const primitives_ptr = game.primitives();
-          const len = game.primitives_len();
-          // const step = game.primitive_size();
-          const step = 4;
-          const primitives_u8 = new Uint8Array(memory().buffer, primitives_ptr, len * step * 4);
-          const primitives_f32 = new Float32Array(memory().buffer, primitives_ptr, len * step);
-
-
-          // console.log(len)
-          // console.log(image_bitmaps)
-          for (let i = 0; i < len * step; i += step) {
-            const x = primitives_f32[i];
-            const y = primitives_f32[i + 1];
-            const rotate_angle_rad = primitives_f32[i + 2];
-            const bitmap = primitives_u8[(i + 3) * 4];
-            // console.log(primitives_f32[i], primitives_f32[i + 1], primitives_f32[i + 2], primitives_f32[i + 3])
-            // console.log(
-            //   primitives_u8[(i + 2) * 4 + 0],
-            //   primitives_u8[(i + 2) * 4 + 1],
-            //   primitives_u8[(i + 2) * 4 + 2],
-            //   primitives_u8[(i + 2) * 4 + 3]
-            // )
-            try {
-              // ctx.save()
-              // ctx.rotate(3.14);
-              drawImage(ctx, image_bitmaps[bitmap], x, y, rotate_angle_rad)
-              // ctx.restore()
-              // ctx.rotate(-3.14);
-            } catch(e) {
-              console.error("draw error:", e)
-            }
-          }
-          await new Promise(r => setTimeout(r, 1));
-        }
-
-
-
-        // const hero_x = hero.motion_state.x;
-        // const hero_y = hero.motion_state.y;
-        // TODO: Render logic
-        // ctx.fillRect(0, 0, 100, 100);
-
-        // // bg
-        ctx.fillStyle = "#eeeeee";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await draw_primitives()
-        // // hero
-        // drawImage(ctx, me2, hero.motion_state.x, hero.motion_state.y);
-
-        // ctx.beginPath();
-        // ctx.arc(hero_x, canvas.height - hero_y, 5, 0, 2 * Math.PI, false);
-        // ctx.fillStyle = 'red'; // 设置实心圆的颜色
-        // ctx.fill();
-
-        // // bullet
-        // for (let bullet of game.bullets()) {
-        //   const bullet_x = bullet.motion_state.x;
-        //   const bullet_y = bullet.motion_state.y;
-        //   drawImage(ctx, hero_bullet, bullet_x, bullet_y);
-        // }
-
-        const render_tick_end = Date.now();
-        const render_tick_cost_ms = render_tick_end - render_tick_start;
-        await new Promise(r => setTimeout(r, Math.max(render_tick_ms - render_tick_cost_ms)));
-        // console.timeEnd("RenderTick")
-      }
-
-      console.log("exit render loop...")
-
-      console.log("removing event listeners...")
-      document.removeEventListener('keydown', keydown_handler);
-      document.removeEventListener('keyup', keyup_handler);
+      const game = new FrontendGame();
     }
     run()
   </script>
