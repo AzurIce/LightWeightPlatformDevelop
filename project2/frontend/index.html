@@ -6,6 +6,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project2</title>
   <style>
+    /* prefers-reduced-motion 用于检测用户的系统是否被开启了动画减弱功能 */
+    /* https://developer.mozilla.org/zh-CN/docs/Web/CSS/@media/prefers-reduced-motion */
+    @media (prefers-reduced-motion: reduce) {
+      body::before {
+        animation-duration: 0s;
+      }
+    }
+
+    /* 背景图平移动画 */
+    @keyframes bg {
+      to {
+        background-position: 0 calc(700px * 1);
+      }
+    }
+
     html,
     body {
       overflow: hidden;
@@ -24,7 +39,7 @@
       height: 700px;
       flex: 480px 0 0;
       box-sizing: border-box;
-      background-color: #ccc;
+      /* background-color: #ccc; */
 
       display: flex;
       justify-content: center;
@@ -32,6 +47,16 @@
       font-size: 32px;
 
       transform: scale(1);
+      /* grid-area 边界的约定 */
+      /* https://developer.mozilla.org/zh-CN/docs/Web/CSS/grid-area */
+      grid-area: body;
+      content: "";
+      /* 平铺svg图 */
+      background-image: url("./images/background.png");
+      background-repeat: repeat;
+
+      /* opacity: 0.25; */
+      animation: bg 6s linear infinite;
     }
 
     #stats {
@@ -39,6 +64,10 @@
       top: 10px;
       z-index: 10;
       font-size: 20px;
+    }
+
+    #canvas {
+      background-color: rgba(0, 0, 0, 0);
     }
 
     .panel {
@@ -253,8 +282,10 @@
           }
 
           // bg
-          this.ctx.fillStyle = "#eeeeee";
-          this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // this.ctx.fillStyle = "#eeeeee";
+          // this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // this.ctx.fillStyle = "rgba(0, 0, 0, 0)";
+          this.ctx.clearRect(0, 0, canvas.width, canvas.height);
           await draw_primitives()
 
           const render_tick_end = Date.now();
